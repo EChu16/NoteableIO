@@ -1,0 +1,3 @@
+%div
+	=subscription.user.name
+	%a{href: "/subscriptions/#{subscription.id}", class: "glyphicon glyphicon-remove", onclick: "deleteSubscription(this, event)", :data=>{:id=>subscription.id}}

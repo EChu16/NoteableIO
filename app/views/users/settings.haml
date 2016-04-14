@@ -1,0 +1,50 @@
+%form{:action=>"/users/update", :method=>"POST"} 
+	.form-group
+		%label{:for => "phone_number", :style=> "color:#c0392b;font-size:14pt"} Phone number:
+		%input{:name =>"phone_number", :type => "tel", :value=>current_user.phone_number}
+	%input{:type =>"submit", :class=> "btn btn-success"}
+
+	%h3{:style=>"color:white;"} Manage subscriptions: 
+	.subscriptions{:style=>"color:white;"}
+		-current_user.subscriptions_made.each do |s|
+			= render :partial=>"shared/subscription", :locals=>{:subscription => s}
+
+%h4{:style=>"color:white;"} Add subscription (enter a user's email address): 
+%input{:type=>"text", :onkeydown=>"addSubscription(this, event)"}
+:javascript
+	function deleteSubscription(subscription, e){
+		e.preventDefault();
+		var parent = $(subscription).parent();
+		$.ajax({
+			method : "DELETE",
+			url : $(subscription).attr("href"),
+			success : function(){
+				parent.remove();
+				softNotice("Subscription removed");
+			}
+		});
+	}
+
+	function addSubscription(input, e)
+	{
+		if((e.which || e.keyCode) == 13 && $(input).val() != "")
+		{
+			$.ajax({
+				method : "POST",
+				url : "/subscriptions",
+				data : { email : $(input).val()},
+				success : function(data){
+					if(data == "Could not find specified user")
+					{
+						softError("Could not find specified user");
+					}
+					else
+					{
+						data = $(data);
+						$(".subscriptions").append(data);
+						softNotice("Subscription added");
+					}
+				}
+			});
+		}
+	}

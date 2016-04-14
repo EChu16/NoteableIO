@@ -1,0 +1,7 @@
+-streams.each do |stream|
+	.name
+		= link_to stream.name, '/streams/' + stream.id.to_s
+	.streamer
+		By 
+		=stream.user.name
+

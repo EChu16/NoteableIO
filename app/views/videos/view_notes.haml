@@ -1,0 +1,136 @@
+-if @video
+	#video_container{:style => "display:inline-block;"}
+		Enter a new video url: 
+		%input#url_input{:type=>"text"}
+		%br
+		%br
+		<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/swfobject/2.2/swfobject.js"></script>
+		#video
+			You need Flash player 8+ and JavaScript enabled to view this video.
+		%br
+		%br
+		%div{:style=>"position:relative;"}
+			%textarea#note_input{:style=>"height:75px;"}
+			%input#mike{:type=>"text", "x-webkit-speech" => "x-webkit-speech"}
+			.btn.btn-primary#note_save_button{:style=>"position:absolute; top:0px;"} Save
+
+	#notes_container{:style => "display:inline-block; position: absolute; top: 0px; padding-left:10px; overflow:auto;"}
+		%span{:style=>"color:white;"}
+			#{@user.name}'s Notes: 
+		%br
+		-collection = @user.note_collection_for(@video)
+		-if collection
+			-collection.notes.order("start ASC").each do |note|
+				=render :partial => "notes/partial", :locals => {:note => note}
+		%a.btn.btn-primary#copy_button{:href=>"copy_notes"} Copy notes
+		-unless collection.user_id == current_user.id
+			%a.btn.btn-success#up_vote_button{:href=>"/votes/vote/#{collection.id}?up=true", :remote=>true} &#x25B2;
+			%a.btn.btn-danger#up_vote_button{:href=>"/votes/vote/#{collection.id}?up=false", :remote=>true} &#x25BC;
+	:javascript
+		var params = { allowScriptAccess: "always" };
+		var atts = { id: "video" };
+		var width = screen.width * .5;
+		var height = screen.height * .5;
+		swfobject.embedSWF("http://www.youtube.com/v/#{@video.url}?enablejsapi=1&playerapiid=video&version=3",
+		"video", width, height, "8", null, null, params, atts);
+		function onYouTubePlayerReady(playerId)
+		{
+			videoPlayer = document.getElementById("video");
+		}
+		$("#note_input").css("width", width * .8 + "px");
+		$("#note_save_button").css("width", width *.15 + "px");
+		$("#note_save_button").css("margin-left", width *.05 + "px");
+		$("#notes_container").css("width", $("#notes_container").parent().width() - width + "px").css("height", height + "px");
+		$("#note_save_button").on("click", function(){
+			if($("#note_input").val() != "")
+			{
+				if($("#note_input").data("note"))
+				{
+					$.ajax({
+						method: "POST",
+						url : "/notes/" + $("#note_input").data("note").data("id") + "/update",
+						data : { text : $("#note_input").val(), start : videoPlayer.getCurrentTime() }, 
+						success : function(data) {
+							$("#note_input").data("note").remove();
+							data = $(data);
+							addNote(data);
+							$("#note_input").data("note", null);
+						}
+					});
+				}
+				else
+				{
+					$.ajax({
+						method: "POST",
+						url : window.location.href + "/save_note", 
+						data : { text : $("#note_input").val(), start : videoPlayer.getCurrentTime() }, 
+						success : function(data) {
+							data = $(data);
+							addNote(data);
+						}
+					});
+				}
+				$("#note_input").val("");
+			}
+		});
+-else
+	.text-center
+		Enter a video url: 
+		%input#url_input{:type=>"text"}
+:javascript
+	var mike = document.getElementById('mike');
+	mike.onfocus = mike.blur;
+	mike.onwebkitspeechchange = function(e) {
+		document.getElementById('note_input').value = mike.value;  
+	};
+	function addNote(note){
+		$("#notes_container").append(note);
+		var children = $("#notes_container").children(".note");
+		var inserted = false;
+		for(var i = 0; i < children.length; i++)//>
+		{
+			if(parseInt($(children[i]).data("timestamp")) > parseInt(note.data("timestamp")))
+			{
+				note.insertBefore(childern[i]);
+				inserted = true;
+				break;
+			}
+		}
+		if(!inserted)
+		{
+			note.insertBefore($("#copy_button"));
+		}
+	}
+	function jumpTo(note){
+		note = $(note).parent();
+		videoPlayer.seekTo(note.data("timestamp"), true);
+	}
+	function deleteNote(note){
+		note = $(note).parent();
+		$.ajax({
+			method: "POST",
+			url : "/notes/" + note.data("id") + "/delete",  
+			success : function(data) {
+				note.remove();
+			}
+		});
+	}
+	function editNote(note){
+		if($("#note_input").data("note"))
+		{
+			$("#note_input").data("note").children(".edit-button").css("color", "#428bca").html("Edit");
+		}
+		$(note).html("Editing").css("color", "red");
+		var note = $(note).parent();
+		$("#note_input").data("note", note);
+		$("#note_input").html(note.children(".note-content").html().trim());
+	}
+	$("#url_input").on("keydown", function(e){
+		var text = $(this).val();
+		if((e.which || e.keycode) == 13 && text != "")
+		{
+			var end = text.indexOf("&");
+			var id = text.substring(text.indexOf("v=") + 2, (end == -1) ? text.length : end);
+			window.location = "/videos/" + id;
+		}
+	});

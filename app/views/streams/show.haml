@@ -1,0 +1,135 @@
+#video_container{:style => "display:inline-block;"}
+	#video
+		-if @stream.ended
+			%h3.text-center{:style=>"color:white;"} This stream has been closed.  
+			- if @stream.video_id
+				%h2.text-center
+					The owner of the stream recorded it and has uploaded it 
+					%a{:href => "/videos/#{@stream.video.url}"} here.
+	%br
+	%br
+	%div{:style=>"position:relative;"}
+		%textarea#note_input{:style=>"height:75px;"}
+		%input#mike{:type=>"text", "x-webkit-speech" => "x-webkit-speech"}
+		.btn.btn-primary#note_save_button{:style=>"position:absolute; top:0px;"} Save
+
+#notes_container{:style => "display:inline-block; position: absolute; top: 0px; padding-left:10px; overflow:scroll;"}
+	-collection = current_user.note_collection_for(@stream) if current_user
+	-if collection
+		-collection.notes.order("start ASC").each do |note|
+			=render :partial => "notes/partial", :locals => {:note => note}
+:javascript
+	var width = screen.width * .5;
+	var height = screen.height * .5;
+	$("#video_container").css("width", width + "px");
+	$("#note_input").css("width", width * .8 + "px");
+	$("#note_save_button").css("width", width *.15 + "px");
+	$("#note_save_button").css("margin-left", width *.05 + "px");
+	$("#notes_container").css("width", $("#notes_container").parent().width() - width + "px").css("height", height + "px");
+	$("#note_save_button").on("click", function(){
+		if($("#note_input").val() != "")
+		{
+			if($("#note_input").data("note"))
+			{
+				$.ajax({
+					method: "POST",
+					url : "/notes/" + $("#note_input").data("note").data("id") + "/update",
+					data : { text : $("#note_input").val() }, 
+					success : function(data) {
+						$("#note_input").data("note").remove();
+						data = $(data);
+						addNote(data);
+						$("#note_input").data("note", null);
+					}
+				});
+			}
+			else
+			{
+				$.ajax({
+					method: "POST",
+					url : window.location.href + "/save_note", 
+					data : { text : $("#note_input").val(), start : videoPlayer.getCurrentTime() }, 
+					success : function(data) {
+						data = $(data);
+						addNote(data);
+					}
+				});
+			}
+			$("#note_input").val("");
+		}
+	});
+	function addNote(note){
+		$("#notes_container").append(note);
+		var children = $("#notes_container").children(".note");
+		var inserted = false;
+		for(var i = 0; i < children.length; i++)//>
+		{
+			if(parseInt($(children[i]).data("timestamp")) > parseInt(note.data("timestamp")))
+			{
+				note.insertBefore(childern[i]);
+				inserted = true;
+				break;
+			}
+		}
+		if(!inserted)
+		{
+			$("#notes_container").append(note);
+		}
+	}
+	function deleteNote(note){
+		note = $(note).parent();
+		$.ajax({
+			method: "POST",
+			url : "/notes/" + note.data("id") + "/delete",  
+			success : function(data) {
+				note.remove();
+			}
+		});
+	}
+	function editNote(note){
+		if($("#note_input").data("note"))
+		{
+			$("#note_input").data("note").children(".edit-button").css("color", "#428bca").html("Edit");
+		}
+		$(note).html("Editing").css("color", "red");
+		var note = $(note).parent();
+		$("#note_input").data("note", note);
+		$("#note_input").html(note.children(".note-content").html().trim());
+	}
+	$("#url_input").on("keydown", function(e){
+		var text = $(this).val();
+		if((e.which || e.keycode) == 13 && text != "")
+		{
+			var end = text.indexOf("&");
+			var id = text.substring(text.indexOf("v=") + 2, (end == -1) ? text.length : end);
+			window.location = "/videos/" + id;
+		}
+	});
+	var mike = document.getElementById('mike');
+	mike.onfocus = mike.blur;
+	mike.onwebkitspeechchange = function(e) {
+		document.getElementById('note_input').value = mike.value;  
+	};
+
+-unless @stream.ended
+	:javascript
+		var session = TB.initSession("#{@stream.session}");
+		session.addEventListener("sessionConnected", sessionConnectedHandler);
+		session.addEventListener("streamCreated", streamCreatedHandler);
+
+		function sessionConnectedHandler(event) {
+			subscribeToStreams(event.streams);	}
+
+		function streamCreatedHandler(event) {
+			subscribeToStreams(event.streams);
+		}
+		 
+		function subscribeToStreams(streams) {
+			for (var i = 0; i < streams.length; i++) {//>
+				var stream = streams[i];
+				if (stream.connection.connectionId != session.connection.connectionId) {
+					session.subscribe(stream, document.getElementById("video", {width:width, height:height}));
+				}
+			}
+		}
+		session.connect(44704242, "#{@token}");

@@ -1,0 +1,7 @@
+.note{:data => {:timestamp => note.start, :id => note.id}}
+	%span.timestamp{:onclick=>"jumpTo(this)"}
+		=note.start_to_string
+	%span.note-content
+		=note.text
+	%span.delete-button{:onclick=>"deleteNote(this)"} X
+	%span.edit-button{:onclick=>"editNote(this)"} Edit

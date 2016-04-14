@@ -1,0 +1,34 @@
+-if @stream.ended
+	%h3.text-center{:style=>"color:white;"}
+		You have closed this stream. 
+	%br
+	%h4.text-center{:style=>"color:white;"}
+		If you recorded the stream, you can leave a link for others to come back to here: 
+		%input{:type=>"text", :id=>"url"}
+-else
+	.text-center
+		#video
+		%a.btn.btn-danger{:href=>"/streams/" + @stream.id.to_s + "/end"} End Stream
+	:javascript
+		var session = TB.initSession("#{@stream.session}");
+		session.addEventListener("sessionConnected", sessionConnectedHandler);
+		session.addEventListener("streamCreated", streamCreatedHandler);
+
+		function sessionConnectedHandler (event) {
+			subscribeToStreams(event.streams);
+			session.publish();
+		}
+
+		function streamCreatedHandler(event) {
+			subscribeToStreams(event.streams);
+		}
+		 
+		function subscribeToStreams(streams) {
+			for (var i = 0; i < streams.length; i++) {//>
+				var stream = streams[i];
+				if (stream.connection.connectionId != session.connection.connectionId) {
+				    session.subscribe(stream, document.getElementById("video"));
+				}
+			}
+		}
+		session.connect(44704242, "#{@token}");

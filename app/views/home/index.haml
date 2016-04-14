@@ -1,0 +1,16 @@
+- if current_user
+	%h3{:style=>"color:white;"} Recently accessed notes: 
+	.recent-notes
+		-current_user.note_collections.sort{ |x,y| y.notes.order("updated_at DESC").first.updated_at - x.notes.order("updated_at DESC").first.updated_at }.each do |collection|
+			=render :partial=>"note_collections/preview", :locals => {:collection => collection}
+- else
+	.jumbotron
+		.container.text-center{:style=>"font-family:'Nothing you could do';font-size:3.2em"}
+			Noteable: For all of your notable moments.
+			%div
+				= link_to "Sign In", "/sign_up", :class => "btn btn-success btn-lg", :style => "font-size:.9em;"
+
+	
+	-@streams = Stream.where(:ended=>false).where(:password=>nil);
+	-render :partial => "feeds/feed", :locals=>{:streams=>@streams}
+			

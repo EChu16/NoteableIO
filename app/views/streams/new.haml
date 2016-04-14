@@ -1,0 +1,12 @@
+%div{:style=> "text-align:center;padding:5px;margin-top:20px;"}
+	=form_for(Stream.new) do |f|
+		:css
+			@import url(http://fonts.googleapis.com/css?family=Jacques+Francois);
+		%label{:for => "name",:style=> "color:white;font-family: 'Jacques Francois', serif;font-size:16pt;"} Stream name: 
+		%input#name{:name=>"name",:style=> "color:black,font-size:14pt;"}
+		%br
+		%label{:for =>"password_checkbox", :style=> "color:white;font-family: 'Jacques Francois', serif;font-size:16pt;"} Enable Password: 
+		%input#password_checkbox{:type=>"checkbox", :name=>"enable_password"}
+		%br
+		%input#password{:name=>"password", :type => "password"}
+		%input{:type=>"submit"}
